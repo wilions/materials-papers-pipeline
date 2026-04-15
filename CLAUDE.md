@@ -6,6 +6,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A materials-science literature pipeline: fetch paper metadata from journal APIs → filter by topic keywords → download open-access PDFs. No package infrastructure — scripts are standalone and run directly with `python3`.
 
+**GitHub:** `wilions/materials-papers-pipeline` — scripts + all CSVs are versioned here. PDFs are local-only (too large for GitHub).
+
+## Automated Pipeline
+
+Two tiers run daily without manual intervention:
+
+| Time (SGT) | What | Where |
+|------------|------|-------|
+| 8:00am | Fetch Crossref metadata → filter → commit updated CSVs to GitHub | Anthropic cloud routine `trig_01XYBCVhsckb2ucUrAvGU2Dq` |
+| 10:00am | `git pull` → download new OA PDFs locally | Mac launchd `com.pei.papers-pipeline` |
+
+```bash
+# Run full pipeline manually
+./run_pipeline.sh        # pull → fetch → filter → download PDFs
+
+# Manage local schedule
+launchctl unload ~/Library/LaunchAgents/com.pei.papers-pipeline.plist
+launchctl load  ~/Library/LaunchAgents/com.pei.papers-pipeline.plist
+
+# View/edit cloud routine
+# https://claude.ai/code/scheduled/trig_01XYBCVhsckb2ucUrAvGU2Dq
+```
+
 ## Dependencies
 
 ```bash
@@ -111,4 +134,23 @@ fed_pdfs/                   ← Fusion Engineering and Design (~5–15%)
 fst_pdfs/                   ← Fusion Science and Technology (~5–10%)
 pnas_pdfs/                  ← PNAS (older general download)
 advanced_science_metal_alloys/ ← Advanced Science metals (24 PDFs)
+```
+
+## NotebookLM
+
+PDFs are uploaded to NotebookLM for querying. Limit is 50 sources per notebook, so large folders split across multiple notebooks. Use `notebooklm` CLI (`pip install notebooklm-py`).
+
+**Existing notebooks:**
+
+| Notebook | ID | Sources | Folder |
+|----------|----|---------|--------|
+| PNAS Structural Alloys | `3ed7bb3d-084a-4a3d-bc9b-fed105e5f748` | 31 | `pnas_pdfs/` |
+
+```bash
+# Add PDFs to a notebook
+notebooklm use <notebook_id>
+notebooklm source add ./path/to/file.pdf
+
+# Bulk add a folder (≤50 PDFs)
+cd <pdf_dir> && for f in *.pdf; do notebooklm source add "./$f"; done
 ```
