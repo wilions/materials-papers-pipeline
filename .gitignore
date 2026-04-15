@@ -1,0 +1,21 @@
+# PDF directories (too large for GitHub)
+*_pdfs/
+*_pdfs
+*_pdfs_*/
+*_pdfs_*
+advanced_science_metal_alloys/
+
+# Runtime logs
+pipeline_stdout.log
+pipeline_stderr.log
+pipeline_run.log
+*/download_log.csv
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# macOS / IDE
+.DS_Store
+.vscode/
