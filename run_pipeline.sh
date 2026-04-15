@@ -13,6 +13,11 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
 cd "$PAPERS_DIR"
 log "=== Pipeline started ==="
 
+# ── 0. Pull latest CSVs from GitHub (committed by cloud routine) ────────────
+log "Pulling latest CSVs from GitHub..."
+git pull origin main
+log "  Pull done"
+
 # ── 1. Fetch new papers from Crossref ──────────────────────────────────────
 log "Fetching new Crossref metadata..."
 
