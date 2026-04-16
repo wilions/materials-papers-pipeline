@@ -70,12 +70,12 @@ def get_pdf_urls(doi: str, article_url: str) -> list:
 
     elif doi.startswith("10.1002/") or doi.startswith("10.1111/"):
         # Wiley
-        urls.append(f"https://onlinelibrary.wiley.com/doi/pdfdirect/{doi_enc}")
-        urls.append(f"https://onlinelibrary.wiley.com/doi/pdf/{doi_enc}")
+        urls.append(f"https://onlinelibrary.wiley.com/doi/pdfdirect/{doi}")
+        urls.append(f"https://onlinelibrary.wiley.com/doi/pdf/{doi}")
 
     elif doi.startswith("10.1080/") or doi.startswith("10.1179/"):
         # Taylor & Francis
-        urls.append(f"https://www.tandfonline.com/doi/pdf/{doi_enc}?download=true")
+        urls.append(f"https://www.tandfonline.com/doi/pdf/{doi}?download=true")
 
     elif doi.startswith("10.1016/"):
         # Elsevier ScienceDirect — OA PDF requires PII from article URL
@@ -106,7 +106,7 @@ def _try_download(url: str, dest: Path) -> bool:
     try:
         req = urllib.request.Request(url, headers=HEADERS)
         with urllib.request.urlopen(req, timeout=30) as r:
-            data = r.read()
+            data = r.read(50_000_000)  # 50 MB cap — no real PDF exceeds this
         if not is_pdf_bytes(data):
             return False
         with open(tmp, "wb") as f:
