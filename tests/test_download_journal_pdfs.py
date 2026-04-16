@@ -46,8 +46,7 @@ class TestPublisherUrlPatterns(unittest.TestCase):
 
     def test_elsevier_doi_without_pii(self):
         urls = djp.get_pdf_urls("10.1016/j.actamat.2025.001", "")
-        # Should return empty or generic — no pdfft possible without PII
-        self.assertIsInstance(urls, list)
+        self.assertEqual(urls, [])
 
     def test_unknown_doi_prefix_returns_empty(self):
         urls = djp.get_pdf_urls("10.9999/unknown.journal.001", "")

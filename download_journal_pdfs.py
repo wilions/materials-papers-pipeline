@@ -18,6 +18,7 @@ Expected OA yield by publisher:
 
 import argparse
 import csv
+import os
 import re
 import threading
 import time
@@ -60,8 +61,8 @@ def get_pdf_urls(doi: str, article_url: str) -> list:
         urls.append(f"https://www.science.org/doi/pdf/{doi}")
 
     elif doi.startswith("10.1088/"):
-        # IOP Publishing (Nuclear Fusion, etc.)
-        urls.append(f"https://iopscience.iop.org/article/{doi_enc}/pdf")
+        # IOP Publishing (Nuclear Fusion, etc.) — DOI as literal path segments
+        urls.append(f"https://iopscience.iop.org/article/{doi}/pdf")
 
     elif doi.startswith("10.1007/"):
         # Springer
@@ -101,16 +102,20 @@ def is_pdf_bytes(data: bytes) -> bool:
 
 def _try_download(url: str, dest: Path) -> bool:
     """Attempt to download a PDF from url to dest. Returns True on success."""
+    tmp = dest.with_suffix(".tmp")
     try:
         req = urllib.request.Request(url, headers=HEADERS)
         with urllib.request.urlopen(req, timeout=30) as r:
             data = r.read()
         if not is_pdf_bytes(data):
             return False
-        with open(dest, "wb") as f:
+        with open(tmp, "wb") as f:
             f.write(data)
+        os.replace(tmp, dest)  # atomic on POSIX
         return True
     except Exception:
+        if tmp.exists():
+            tmp.unlink()
         return False
 
 
@@ -128,6 +133,11 @@ def _process_row(doi: str, article_url: str, out_dir: Path, lock: threading.Lock
         with lock:
             counter["skip"] += 1
         return
+
+    # Clean up any leftover tmp file from previous interrupted run
+    tmp = dest.with_suffix(".tmp")
+    if tmp.exists():
+        tmp.unlink()
 
     candidate_urls = get_pdf_urls(doi, article_url)
     if not candidate_urls:
