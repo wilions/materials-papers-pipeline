@@ -154,5 +154,56 @@ class TestDeduplication(unittest.TestCase):
         self.assertEqual(rows[0]["doi"], "10.1016/fresh")
 
 
+# ── Atom fixture helpers ──────────────────────────────────────────────────────
+
+def _atom(entries_xml):
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title>Test Journal</title>
+  {entries_xml}
+</feed>""".encode()
+
+
+def _entry(doi, title, author="Smith, J.", updated="2025-04-10T00:00:00+00:00"):
+    return f"""
+<entry xmlns="http://www.w3.org/2005/Atom">
+  <title>{title}</title>
+  <link href="https://doi.org/{doi}" rel="alternate"/>
+  <author><name>{author}</name></author>
+  <updated>{updated}</updated>
+  <dc:identifier>{doi}</dc:identifier>
+</entry>"""
+
+
+# ── Tests: Atom feed parsing ──────────────────────────────────────────────────
+
+class TestAtomParsing(unittest.TestCase):
+
+    def test_atom_entry_doi_and_url(self):
+        """Atom <link href="..."/> should yield non-empty doi and url."""
+        doi = "10.1038/s41467-025-001"
+        xml = _atom(_entry(doi, "Atom Paper"))
+        rows = list(fr.parse_rss(xml))
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0]["doi"], "doi should be non-empty")
+        self.assertTrue(rows[0]["url"], "url should be non-empty")
+        self.assertIn("doi.org", rows[0]["url"])
+
+    def test_atom_entry_author(self):
+        """Atom <author><name>...</name></author> should populate authors field."""
+        xml = _atom(_entry("10.1038/s41467-025-002", "Author Test", author="Jane Smith"))
+        rows = list(fr.parse_rss(xml))
+        self.assertEqual(rows[0]["authors"], "Jane Smith")
+
+    def test_atom_entry_date_with_offset(self):
+        """ISO 8601 date with +00:00 offset should parse year and month correctly."""
+        xml = _atom(_entry("10.1038/s41467-025-003", "Date Test",
+                           updated="2025-04-10T00:00:00+00:00"))
+        rows = list(fr.parse_rss(xml))
+        self.assertEqual(rows[0]["year"], "2025")
+        self.assertEqual(rows[0]["month"], "4")
+
+
 if __name__ == "__main__":
     unittest.main()

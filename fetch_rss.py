@@ -101,6 +101,10 @@ def _parse_item(item: ET.Element) -> dict:
             break
 
     link = _text("link", "guid")
+    # Atom feeds use self-closing <link href="..."/> — .text is always None
+    atom_link_el = item.find("{http://www.w3.org/2005/Atom}link")
+    if not link and atom_link_el is not None:
+        link = atom_link_el.get("href", "")
     if not doi and "doi.org/" in link:
         doi = link.split("doi.org/")[-1].strip()
 
@@ -109,9 +113,9 @@ def _parse_item(item: ET.Element) -> dict:
     pub_date = _text("pubDate", "date", "updated", "published")
     if pub_date:
         for fmt in ("%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S GMT",
-                    "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
+                    "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
             try:
-                dt = datetime.strptime(pub_date, fmt)
+                dt = datetime.strptime(pub_date.strip(), fmt)
                 year, month = str(dt.year), str(dt.month)
                 break
             except ValueError:
@@ -121,10 +125,19 @@ def _parse_item(item: ET.Element) -> dict:
             if m:
                 year = m.group(1)
 
+    # Atom <author> wraps name in a <name> child element — .text on <author> is whitespace
+    authors = _text("creator", "author")
+    if not authors:
+        atom_author = item.find("{http://www.w3.org/2005/Atom}author")
+        if atom_author is not None:
+            name_el = atom_author.find("{http://www.w3.org/2005/Atom}name")
+            if name_el is not None and name_el.text:
+                authors = name_el.text.strip()
+
     return {
         "doi": doi,
         "title": _text("title"),
-        "authors": _text("creator", "author"),
+        "authors": authors,
         "year": year,
         "month": month,
         "volume": _text("volume"),
